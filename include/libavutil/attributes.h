@@ -121,7 +121,8 @@
 #endif
 #endif
 
-#if defined(__GNUC__) || defined(__clang__)
+
+#if defined(__GNUC__)
 #    define av_unused __attribute__((unused))
 #else
 #    define av_unused
@@ -132,7 +133,7 @@
  * away.  This is useful for variables accessed only from inline
  * assembler without the compiler being aware.
  */
-#if AV_GCC_VERSION_AT_LEAST(3,1) || defined(__clang__)
+#if AV_GCC_VERSION_AT_LEAST(3,1)
 #    define av_used __attribute__((used))
 #else
 #    define av_used

@@ -1,9 +1,15 @@
 #include <iostream>
 using namespace std;
 
+extern "C" {
+#include <libswscale/swscale.h>
+}
+
 #include <opencv2/highgui.hpp>
 #pragma comment(lib,"opencv_world320.lib")
+#pragma comment(lib, "swscale.lib")
 using namespace cv;
+
 
 int main(int argc, char *argv[])
 {
@@ -12,19 +18,64 @@ int main(int argc, char *argv[])
 	VideoCapture cam;
 	namedWindow("video");
 	//if (cam.open(0))
-	if(cam.open(inUrl)){
-		cout << "open camera success!" << endl;
-	}else{
-		cout << "open camera failed!" << endl;
-		waitKey(1);
-		return -1;
+
+	//像素格式转换上下文对象
+	SwsContext *vsc = NULL;
+	try
+	{
+		///opencv打开流
+		cam.open(inUrl);
+		if (!cam.isOpened())
+		{
+			throw exception("camera open failed");
+		}
+		cout << inUrl << " cam open success" << endl;
+		//获取frame宽高信息
+		int inWidth = cam.get(CAP_PROP_FRAME_WIDTH);
+		int inHeight = cam.get(CAP_PROP_FRAME_HEIGHT);
+		int fps = cam.get(CAP_PROP_FPS);
+
+		///初始化像素格式转换上下文
+		vsc = sws_getCachedContext(vsc,
+			//我们使用opencv打开的流，它的格式是AV_PIX_FMT_BGR24，所以这里要注意
+			inWidth,inHeight,AV_PIX_FMT_BGR24,
+			//目标的宽高和像素格式
+			inWidth,inHeight, AV_PIX_FMT_YUV420P,
+			//尺寸变化算法
+			SWS_BICUBIC,
+			0,0,0
+			);
+		Mat frame;
+		for (;;) {
+			///读取rtsp视频帧，并解码
+			//cam.read(frame); read内
+			//部就是做了grab和retrieve两步
+			if (!cam.grab()) {
+				continue;
+			}
+			///yuv转rgb
+			if (!cam.retrieve(frame)) {
+				continue;
+			}
+			imshow("video", frame);
+			waitKey(1);
+		}
 	}
-	Mat frame;
-	for (;;){
-		cam.read(frame);
-		imshow("video", frame);
-		waitKey(1);
+	catch (const std::exception& ex)
+	{
+		if (cam.isOpened())
+		{
+			cam.release();
+		}
+		if (vsc)
+		{
+			sws_freeContext(vsc);
+			//指针置NULL是一个良好的习惯
+			vsc = NULL;
+		}
+		cerr << ex.what()<< endl;
 	}
+	
 	return 0;
 }
 

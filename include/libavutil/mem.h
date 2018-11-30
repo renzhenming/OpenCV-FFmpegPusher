@@ -97,10 +97,7 @@
     #define DECLARE_ASM_CONST(n,t,v)                    \
         AV_PRAGMA(DATA_ALIGN(v,n))                      \
         static const t __attribute__((aligned(n))) v
-#elif defined(__DJGPP__)
-    #define DECLARE_ALIGNED(n,t,v)      t __attribute__ ((aligned (FFMIN(n, 16)))) v
-    #define DECLARE_ASM_CONST(n,t,v)    static const t av_used __attribute__ ((aligned (FFMIN(n, 16)))) v
-#elif defined(__GNUC__) || defined(__clang__)
+#elif defined(__GNUC__)
     #define DECLARE_ALIGNED(n,t,v)      t __attribute__ ((aligned (n))) v
     #define DECLARE_ASM_CONST(n,t,v)    static const t av_used __attribute__ ((aligned (n))) v
 #elif defined(_MSC_VER)

@@ -20,9 +20,7 @@
 #ifndef AVUTIL_HWCONTEXT_CUDA_H
 #define AVUTIL_HWCONTEXT_CUDA_H
 
-#ifndef CUDA_VERSION
 #include <cuda.h>
-#endif
 
 #include "pixfmt.h"
 
@@ -34,14 +32,11 @@
  * AVBufferRefs whose data pointer is a CUdeviceptr.
  */
 
-typedef struct AVCUDADeviceContextInternal AVCUDADeviceContextInternal;
-
 /**
  * This struct is allocated as AVHWDeviceContext.hwctx
  */
 typedef struct AVCUDADeviceContext {
     CUcontext cuda_ctx;
-    AVCUDADeviceContextInternal *internal;
 } AVCUDADeviceContext;
 
 /**
