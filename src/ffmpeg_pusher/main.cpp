@@ -1,14 +1,20 @@
 #include <iostream>
 using namespace std;
+using namespace cv;
 
 extern "C" {
 #include <libswscale/swscale.h>
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
 }
 
 #include <opencv2/highgui.hpp>
 #pragma comment(lib,"opencv_world320.lib")
 #pragma comment(lib, "swscale.lib")
-using namespace cv;
+#pragma comment(lib,"avformat.lib")
+#pragma comment(lib, "avutil.lib")
+#pragma comment(lib,"avcodec.lib")
+
 
 
 int main(int argc, char *argv[])
@@ -21,6 +27,12 @@ int main(int argc, char *argv[])
 
 	//像素格式转换上下文对象
 	SwsContext *vsc = NULL;
+
+	//输出的数据结构
+	AVFrame *yuv = NULL;
+
+	//编码器上下文
+	AVCodecContext *vc = NULL;
 	try
 	{
 		///opencv打开流
@@ -45,6 +57,64 @@ int main(int argc, char *argv[])
 			SWS_BICUBIC,
 			0,0,0
 			);
+
+		if(!vsc)
+		{
+			throw exception("sws_getCachedContext failed!");
+		}
+
+		///初始化输出的数据结构
+		yuv = av_frame_alloc();
+		yuv->format = AV_PIX_FMT_YUV420P;
+		yuv->width = inWidth;
+		yuv->height = inHeight;
+		yuv->pts = 0;
+		int result = av_frame_get_buffer(yuv, 32);
+		if (result!= 0)
+		{
+			char arr[1024] = { 0 };
+			av_strerror(result, arr, sizeof(arr));
+			throw exception(arr);
+		}
+
+		///初始化编码相关
+		AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+		if(!codec)
+		{
+			throw exception("find h264 encoder failed");
+		}
+
+		vc = avcodec_alloc_context3(codec);
+		if(!vc)
+		{
+			throw exception("avcodec_alloc_context3 failed!");
+		}
+
+		vc->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+		vc->codec_id = codec->id;
+		vc->thread_count = 8;
+		//压缩后每秒视频的bit位大小 50kB
+		vc->bit_rate = 50 * 1024 * 8;
+		vc->width = inWidth;
+		vc->height = inHeight;
+		vc->time_base = { 1,fps };
+		vc->framerate = { fps,1 };
+		//画面组的大小，多少帧一个关键帧
+		vc->gop_size = 50;
+		//不要b帧
+		vc->max_b_frames = 0;
+		vc->pix_fmt = AV_PIX_FMT_YUV420P;
+
+		result = avcodec_open2(vc, 0, 0);
+		if (result != 0)
+		{
+			char buf[1024] = { 0 };
+			av_strerror(result, buf, sizeof(buf) - 1);
+			throw exception(buf);
+		}
+
+		cout << "avcodec_open2 success!" << endl;
+
 		Mat frame;
 		for (;;) {
 			///读取rtsp视频帧，并解码
@@ -58,6 +128,27 @@ int main(int argc, char *argv[])
 				continue;
 			}
 			imshow("video", frame);
+
+			///rgb to yuv
+			uint8_t * srcSlice[AV_NUM_DATA_POINTERS] = {0};
+			//indata[0] bgrbgrbgr
+			//plane indata[0] bbbbb indata[1]ggggg indata[2]rrrrr 
+			srcSlice[0] = frame.data;
+			int srcStride[AV_NUM_DATA_POINTERS] = {0};
+			//一行（宽）数据的字节数
+			srcStride[0] = frame.cols*frame.elemSize();
+			int h = sws_scale(vsc,
+					srcSlice,
+					srcStride,
+					0,
+					frame.rows,
+					yuv->data,
+					yuv->linesize
+					);
+			if (h < 0)
+			{
+				continue;
+			}
 			waitKey(1);
 		}
 	}
