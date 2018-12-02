@@ -164,10 +164,10 @@ typedef struct AVSphericalMapping {
      *       projection type (@ref AV_SPHERICAL_EQUIRECTANGULAR_TILE),
      *       and should be ignored in all other cases.
      */
-    uint32_t bound_left;   ///< Distance from the left edge
-    uint32_t bound_top;    ///< Distance from the top edge
-    uint32_t bound_right;  ///< Distance from the right edge
-    uint32_t bound_bottom; ///< Distance from the bottom edge
+    size_t bound_left;   ///< Distance from the left edge
+    size_t bound_top;    ///< Distance from the top edge
+    size_t bound_right;  ///< Distance from the right edge
+    size_t bound_bottom; ///< Distance from the bottom edge
     /**
      * @}
      */
@@ -179,7 +179,7 @@ typedef struct AVSphericalMapping {
      *       (@ref AV_SPHERICAL_CUBEMAP), and should be ignored in all other
      *       cases.
      */
-    uint32_t padding;
+    size_t padding;
 } AVSphericalMapping;
 
 /**
@@ -202,28 +202,10 @@ AVSphericalMapping *av_spherical_alloc(size_t *size);
  * @param right  Pixels from the right edge.
  * @param bottom Pixels from the bottom edge.
  */
-void av_spherical_tile_bounds(const AVSphericalMapping *map,
+void av_spherical_tile_bounds(AVSphericalMapping *map,
                               size_t width, size_t height,
                               size_t *left, size_t *top,
                               size_t *right, size_t *bottom);
-
-/**
- * Provide a human-readable name of a given AVSphericalProjection.
- *
- * @param projection The input AVSphericalProjection.
- *
- * @return The name of the AVSphericalProjection, or "unknown".
- */
-const char *av_spherical_projection_name(enum AVSphericalProjection projection);
-
-/**
- * Get the AVSphericalProjection form a human-readable name.
- *
- * @param name The input string.
- *
- * @return The AVSphericalProjection value, or -1 if not found.
- */
-int av_spherical_from_name(const char *name);
 /**
  * @}
  * @}

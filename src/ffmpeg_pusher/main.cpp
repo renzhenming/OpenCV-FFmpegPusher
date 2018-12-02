@@ -1,6 +1,6 @@
 #include <iostream>
 using namespace std;
-using namespace cv;
+
 
 extern "C" {
 #include <libswscale/swscale.h>
@@ -15,15 +15,27 @@ extern "C" {
 #pragma comment(lib, "avutil.lib")
 #pragma comment(lib,"avcodec.lib")
 
+using namespace cv;
 
 
 int main(int argc, char *argv[])
 {
-	//海康相机的rtsp url
+	//rtsp url，这是一个可用的测试流地址
 	char *inUrl = "rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov";
+	//nginx-rtmp 直播服务器rtmp推流URL(192.168.1.106是你服务器的ip,确保服务器开启)
+	char *outUrl = "rtmp://192.168.1.106/live";
+	//注册所有的封装器
+	av_register_all();
+	//注册所有的编解码器
+	avcodec_register_all();
+	//注册所有网络协议
+	avformat_network_init();
+
 	VideoCapture cam;
+
 	namedWindow("video");
 	//if (cam.open(0))
+	Mat frame;
 
 	//像素格式转换上下文对象
 	SwsContext *vsc = NULL;
@@ -33,6 +45,9 @@ int main(int argc, char *argv[])
 
 	//编码器上下文
 	AVCodecContext *vc = NULL;
+
+	//rtmp flv 封装器
+	AVFormatContext *ic = NULL;
 	try
 	{
 		///opencv打开流
@@ -42,7 +57,7 @@ int main(int argc, char *argv[])
 			throw exception("camera open failed");
 		}
 		cout << inUrl << " cam open success" << endl;
-		//获取frame宽高信息
+		//获取流宽高信息
 		int inWidth = cam.get(CAP_PROP_FRAME_WIDTH);
 		int inHeight = cam.get(CAP_PROP_FRAME_HEIGHT);
 		int fps = cam.get(CAP_PROP_FPS);
@@ -69,6 +84,11 @@ int main(int argc, char *argv[])
 		yuv->width = inWidth;
 		yuv->height = inHeight;
 		yuv->pts = 0;
+
+		//这个方法调用之前要确保这些条件已经设置
+		//  * -format (pixel format for video, sample format for audio)
+		//  * -width and height for video
+		//	* -nb_samples and channel_layout for audio
 		int result = av_frame_get_buffer(yuv, 32);
 		if (result!= 0)
 		{
@@ -115,7 +135,49 @@ int main(int argc, char *argv[])
 
 		cout << "avcodec_open2 success!" << endl;
 
-		Mat frame;
+
+		///封装器设置
+		result = avformat_alloc_output_context2(&ic, 0, "flv", outUrl);
+		if (result < 0)
+		{
+			char buf[1024] = { 0 };
+			av_strerror(result, buf, sizeof(buf) - 1);
+			throw exception(buf);
+		}
+
+		//添加视频流
+		AVStream *vs = avformat_new_stream(ic, NULL);
+		if (!vs) 
+		{
+			throw exception("avformat_new_stream failed");
+		}
+		vs->codecpar->codec_tag = 0;
+
+		//从编码器复制参数
+		avcodec_parameters_from_context(vs->codecpar, vc);
+		av_dump_format(ic, 0, outUrl, 1);
+
+		///打开网络IO流通道
+		result = avio_open(&ic->pb, outUrl, AVIO_FLAG_WRITE);
+		if (result < 0)
+		{
+			char buf[1024] = { 0 };
+			av_strerror(result, buf, sizeof(buf) - 1);
+			throw exception(buf);
+		}
+		//写入封装头
+		result = avformat_write_header(ic, NULL);
+		if (result < 0) {
+			char buf[1024 ]= { 0 };
+			av_strerror(result, buf, sizeof(buf) - 1);
+			throw exception(buf);
+		}
+
+
+		int vpts = 0;
+
+		AVPacket packet;
+		memset(&packet, 0, sizeof(AVPacket));
 		for (;;) {
 			///读取rtsp视频帧，并解码
 			//cam.read(frame); read内
@@ -130,24 +192,49 @@ int main(int argc, char *argv[])
 			imshow("video", frame);
 
 			///rgb to yuv
-			uint8_t * srcSlice[AV_NUM_DATA_POINTERS] = {0};
+			uint8_t * srcSlice[AV_NUM_DATA_POINTERS] = { 0 };
 			//indata[0] bgrbgrbgr
 			//plane indata[0] bbbbb indata[1]ggggg indata[2]rrrrr 
 			srcSlice[0] = frame.data;
-			int srcStride[AV_NUM_DATA_POINTERS] = {0};
+			int srcStride[AV_NUM_DATA_POINTERS] = { 0 };
 			//一行（宽）数据的字节数
 			srcStride[0] = frame.cols*frame.elemSize();
 			int h = sws_scale(vsc,
-					srcSlice,
-					srcStride,
-					0,
-					frame.rows,
-					yuv->data,
-					yuv->linesize
-					);
+				srcSlice,
+				srcStride,
+				0,
+				frame.rows,
+				yuv->data,
+				yuv->linesize
+			);
 			if (h < 0)
 			{
 				continue;
+			}
+
+			///h264编码
+			yuv->pts = vpts;
+			//vpts++;
+			result = avcodec_send_frame(vc, yuv);
+
+			if (result != 0)
+			{
+				continue;
+			}
+			result = avcodec_receive_packet(vc, &packet);
+			if (result != 0 ){
+				continue;
+			}
+			cout << "*" << packet.size << flush;
+			
+			packet.pts = av_rescale_q(packet.pts, vc->time_base, vs->time_base);
+			packet.dts = av_rescale_q(packet.dts, vc->time_base, vs->time_base);
+			packet.duration = av_rescale_q(packet.duration, vc->time_base, vs->time_base);
+
+			result = av_interleaved_write_frame(ic, &packet);
+			if (result == 0)
+			{
+				cout <<"#" << flush;
 			}
 			waitKey(1);
 		}
@@ -164,9 +251,14 @@ int main(int argc, char *argv[])
 			//指针置NULL是一个良好的习惯
 			vsc = NULL;
 		}
+		if (vc)
+		{
+			avio_closep(&ic->pb);
+			avcodec_free_context(&vc);
+		}
 		cerr << ex.what()<< endl;
 	}
-	
+
 	return 0;
 }
 
