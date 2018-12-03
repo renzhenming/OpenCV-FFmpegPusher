@@ -13,6 +13,8 @@ class CMediaEncode : public MediaEncode {
 private:
 	SwsContext *vsc = NULL;
 	AVFrame *yuv = NULL;
+	AVPacket packet = {0};
+	int vpts = 0;
 public:
 	void Close() {
 		if (vsc)
@@ -23,8 +25,13 @@ public:
 		if (yuv)
 		{
 			av_frame_free(&yuv);
-
 		}
+		if (vc)
+		{
+			avcodec_free_context(&vc);
+		}
+		vpts = 0;
+		av_packet_unref(&packet);
 	}
 
 	bool InitScale() {
@@ -75,6 +82,63 @@ public:
 			return NULL;
 		}
 		return yuv;
+	}
+
+	bool InitVideoCodec() {
+		AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+		if (!codec)
+		{
+			cout << "Can`t find h264 encoder!" << endl;;
+			return false;
+		}
+
+		vc = avcodec_alloc_context3(codec);
+		if (!vc)
+		{
+			cout << "avcodec_alloc_context3 failed!" << endl;
+			return false;
+		}
+
+		vc->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+		vc->codec_id = codec->id;
+		vc->thread_count = 8;
+		//压缩后每秒视频的bit位大小 50kB
+		vc->bit_rate = 50 * 1024 * 8;
+		vc->width = outWidth;
+		vc->height = outHeight;
+		vc->time_base = { 1,fps };
+		vc->framerate = { fps,1 };
+		//画面组的大小，多少帧一个关键帧
+		vc->gop_size = 50;
+		//不要b帧
+		vc->max_b_frames = 0;
+		vc->pix_fmt = AV_PIX_FMT_YUV420P;
+
+		int result = avcodec_open2(vc, 0, 0);
+		if (result != 0)
+		{
+			cout << "avcodec_open2 failed!" << endl;
+			return false;
+		}
+
+		cout << "avcodec_open2 success!" << endl;
+		return true;
+	}
+
+	AVPacket* EncodeVideo(AVFrame *frame) {
+		av_packet_unref(&packet);
+		frame->pts = vpts;
+		vpts++;
+		int result = avcodec_send_frame(vc,frame);
+		if (result != 0) {
+			return NULL;
+		}
+		result = avcodec_receive_packet(vc, &packet);
+		if (result != 0 || packet.size <= 0)
+		{
+			return NULL;
+		}
+		return &packet;
 	}
 };
 

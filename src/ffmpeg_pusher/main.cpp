@@ -1,36 +1,23 @@
 #include <iostream>
 using namespace std;
+
 #include "MediaEncode.h"
-
-extern "C" {
-//#include <libswscale/swscale.h>
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-}
-
+#include "MediaPusher.h"
 #include <opencv2/highgui.hpp>
-#pragma comment(lib,"opencv_world320.lib")
-//#pragma comment(lib, "swscale.lib")
-#pragma comment(lib,"avformat.lib")
-#pragma comment(lib, "avutil.lib")
-#pragma comment(lib,"avcodec.lib")
 
+#pragma comment(lib,"opencv_world320.lib")
 using namespace cv;
+
 
 int main(int argc, char *argv[])
 {
 	MediaEncode *encode = MediaEncode::Get();
+	MediaPusher *pusher = MediaPusher::Get();
 
 	//rtsp url，这是一个可用的测试流地址
 	char *inUrl = "rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov";
 	//nginx-rtmp 直播服务器rtmp推流URL(192.168.1.106是你服务器的ip,确保服务器开启)
 	char *outUrl = "rtmp://192.168.42.134/live";
-	//注册所有的封装器
-	av_register_all();
-	//注册所有的编解码器
-	avcodec_register_all();
-	//注册所有网络协议
-	avformat_network_init();
 
 	VideoCapture cam;
 
@@ -38,17 +25,6 @@ int main(int argc, char *argv[])
 	//if (cam.open(0))
 	Mat frame;
 
-	//像素格式转换上下文对象
-	//SwsContext *vsc = NULL;
-
-	//输出的数据结构
-	//AVFrame *yuv = NULL;
-
-	//编码器上下文
-	AVCodecContext *vc = NULL;
-
-	//rtmp flv 封装器
-	AVFormatContext *ic = NULL;
 	try
 	{
 		///opencv打开流
@@ -71,86 +47,21 @@ int main(int argc, char *argv[])
 		encode->InitScale();
 
 		///初始化编码相关
-		AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_H264);
-		if (!codec)
+
+		if (!encode->InitVideoCodec())
 		{
-			throw exception("find h264 encoder failed");
+			throw exception("InitVideoCodec failed");
 		}
-
-		vc = avcodec_alloc_context3(codec);
-		if (!vc)
-		{
-			throw exception("avcodec_alloc_context3 failed!");
-		}
-
-		vc->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-		vc->codec_id = codec->id;
-		vc->thread_count = 8;
-		//压缩后每秒视频的bit位大小 50kB
-		vc->bit_rate = 50 * 1024 * 8;
-		vc->width = inWidth;
-		vc->height = inHeight;
-		vc->time_base = { 1,fps };
-		vc->framerate = { fps,1 };
-		//画面组的大小，多少帧一个关键帧
-		vc->gop_size = 50;
-		//不要b帧
-		vc->max_b_frames = 0;
-		vc->pix_fmt = AV_PIX_FMT_YUV420P;
-
-		int result = avcodec_open2(vc, 0, 0);
-		if (result != 0)
-		{
-			char buf[1024] = { 0 };
-			av_strerror(result, buf, sizeof(buf) - 1);
-			throw exception(buf);
-		}
-
-		cout << "avcodec_open2 success!" << endl;
-
-
+	
 		///封装器设置
-		result = avformat_alloc_output_context2(&ic, 0, "flv", outUrl);
-		if (result < 0)
-		{
-			char buf[1024] = { 0 };
-			av_strerror(result, buf, sizeof(buf) - 1);
-			throw exception(buf);
-		}
+		pusher->Init(outUrl);
 
 		//添加视频流
-		AVStream *vs = avformat_new_stream(ic, NULL);
-		if (!vs)
-		{
-			throw exception("avformat_new_stream failed");
-		}
-		vs->codecpar->codec_tag = 0;
-
-		//从编码器复制参数
-		avcodec_parameters_from_context(vs->codecpar, vc);
-		av_dump_format(ic, 0, outUrl, 1);
+		pusher->AddStream(encode->vc);
 
 		///打开网络IO流通道
-		result = avio_open(&ic->pb, outUrl, AVIO_FLAG_WRITE);
-		if (result < 0)
-		{
-			char buf[1024] = { 0 };
-			av_strerror(result, buf, sizeof(buf) - 1);
-			throw exception(buf);
-		}
-		//写入封装头
-		result = avformat_write_header(ic, NULL);
-		if (result < 0) {
-			char buf[1024] = { 0 };
-			av_strerror(result, buf, sizeof(buf) - 1);
-			throw exception(buf);
-		}
+		pusher->OpenIO();
 
-
-		int vpts = 0;
-
-		AVPacket packet;
-		memset(&packet, 0, sizeof(AVPacket));
 		for (;;) {
 			///读取rtsp视频帧，并解码
 			//cam.read(frame); read内
@@ -167,34 +78,16 @@ int main(int argc, char *argv[])
 			///rgb to yuv
 			encode->inPixSize = frame.elemSize();
 			AVFrame *yuv = encode->RgbToYuv((char*)frame.data);
-
+			if (!yuv) continue;
+			
 			///h264编码
-			yuv->pts = vpts;
-
-			//pts需要增长，不然提示
-			// non-strictly-monotonic PTS
-			vpts++;
-			result = avcodec_send_frame(vc, yuv);
-
-			if (result != 0)
+			AVPacket *packet = encode->EncodeVideo(yuv);
+			if (!packet)
 			{
 				continue;
 			}
-			result = avcodec_receive_packet(vc, &packet);
-			if (result != 0) {
-				continue;
-			}
-			cout << "*" << packet.size << flush;
-
-			packet.pts = av_rescale_q(packet.pts, vc->time_base, vs->time_base);
-			packet.dts = av_rescale_q(packet.dts, vc->time_base, vs->time_base);
-			packet.duration = av_rescale_q(packet.duration, vc->time_base, vs->time_base);
-
-			result = av_interleaved_write_frame(ic, &packet);
-			if (result == 0)
-			{
-				cout << "#" << flush;
-			}
+		
+			pusher->SendPacket(packet);
 			waitKey(1);
 		}
 	}
@@ -204,16 +97,13 @@ int main(int argc, char *argv[])
 		{
 			cam.release();
 		}
-		//if (vsc)
-		//{
-		//	sws_freeContext(vsc);
-		//	//指针置NULL是一个良好的习惯
-		//	vsc = NULL;
-		//}
-		if (vc)
+		if (encode)
 		{
-			avio_closep(&ic->pb);
-			avcodec_free_context(&vc);
+			encode->Close();
+		}
+		if (pusher)
+		{
+			pusher->Close();
 		}
 		cerr << ex.what() << endl;
 	}

@@ -21,9 +21,15 @@
     <ClCompile Include="MediaEncode.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="MediaPusher.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MediaEncode.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MediaPusher.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

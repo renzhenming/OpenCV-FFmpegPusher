@@ -125,9 +125,11 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MediaEncode.cpp" />
+    <ClCompile Include="MediaPusher.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MediaEncode.h" />
+    <ClInclude Include="MediaPusher.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
