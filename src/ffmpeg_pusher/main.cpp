@@ -14,10 +14,14 @@ int main(int argc, char *argv[])
 	MediaEncode *encode = MediaEncode::Get();
 	MediaPusher *pusher = MediaPusher::Get();
 
+	encode->InitResample();
+	encode->InitAudioCode();
+	//encode->Resample();
+
 	//rtsp url，这是一个可用的测试流地址
 	char *inUrl = "rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov";
 	//nginx-rtmp 直播服务器rtmp推流URL(192.168.1.106是你服务器的ip,确保服务器开启)
-	char *outUrl = "rtmp://192.168.42.134/live";
+	char *outUrl = "rtmp://192.168.1.107/live";
 
 	VideoCapture cam;
 
