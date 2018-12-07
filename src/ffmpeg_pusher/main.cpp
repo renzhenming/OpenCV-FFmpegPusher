@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	MediaPusher *pusher = MediaPusher::Get();
 
 	encode->InitResample();
-	encode->InitAudioCode();
+	
 	//encode->Resample();
 
 	//rtsp url，这是一个可用的测试流地址
@@ -55,6 +55,10 @@ int main(int argc, char *argv[])
 		if (!encode->InitVideoCodec())
 		{
 			throw exception("InitVideoCodec failed");
+		}
+		if (!encode->InitAudioCodec())
+		{
+			throw exception("InitAudioCode failed");
 		}
 	
 		///封装器设置

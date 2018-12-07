@@ -49,17 +49,20 @@ public:
 	//音频重采样上下文初始化
 	virtual bool InitResample() = 0;
 
-	//重采样 返回值无需调用者清理
+	//重采样 
 	virtual AVFrame *Resample(char *data) = 0;
 
 	//初始化视频编码器
 	virtual bool InitVideoCodec() = 0;
 
 	//音频编码初始化
-	virtual bool InitAudioCode() = 0;
+	virtual bool InitAudioCodec() = 0;
 
 	//视频编码
 	virtual AVPacket *EncodeVideo(AVFrame *frame) = 0;
+
+	//音频编码 
+	virtual AVPacket * EncodeAudio(AVFrame* frame) = 0;
 
 	virtual ~MediaEncode();
 protected:

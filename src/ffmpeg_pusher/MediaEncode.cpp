@@ -22,8 +22,12 @@ private:
 	AVFrame *yuv = NULL;
 	//音频frame
 	AVFrame *pcm = NULL;
-	AVPacket packet = {0};
+	//存储视频压缩数据
+	AVPacket vpacket = { 0 };
+	//存储音频压缩数据
+	AVPacket apacket = { 0 };
 	int vpts = 0;
+	int apts = 0;
 public:
 	void Close() {
 		if (vsc)
@@ -44,7 +48,9 @@ public:
 			avcodec_free_context(&vc);
 		}
 		vpts = 0;
-		av_packet_unref(&packet);
+		av_packet_unref(&vpacket);
+		apts = 0;
+		av_packet_unref(&apacket);
 	}
 
 	bool InitScale() {
@@ -143,7 +149,7 @@ public:
 		return pcm;
 	}
 
-	bool InitAudioCode() {
+	bool InitAudioCodec() {
 		if (!CreateCodec(AV_CODEC_ID_AAC)) {
 			return false;
 		}
@@ -153,6 +159,30 @@ public:
 		ac->channels = inChannels;
 		ac->channel_layout = av_get_default_channel_layout(inChannels);
 		return OpenCodec(&ac);
+	}
+
+	AVPacket * EncodeAudio(AVFrame* frame) {
+		pcm->pts = apts;
+		// 1/inSampleRate表示一个样本表示多少秒 
+		//nb_samples表示这个frame有多少个样本
+		//av_rescale_q函数的意义表示第一个参数乘以第二个再除以第三个
+		//前两个参数相乘得到的是nb_samples个样本占用多少秒
+		//然后乘以时间基数，得到的就是真正的时间
+		apts += av_rescale_q(pcm->nb_samples, { 1,inSampleRate }, ac->time_base);
+		int result = avcodec_send_frame(ac, frame);
+		if (result != 0)
+		{
+			return NULL;
+		}
+
+		//将packet重置，去除引用，清空数据
+		av_packet_unref(&apacket);
+		result = avcodec_receive_packet(ac, &apacket);
+		if (result != 0)
+		{
+			return NULL;
+		}
+		return &apacket;
 	}
 
 	AVFrame* RgbToYuv(char *rgb) {
@@ -218,19 +248,20 @@ public:
 	}
 
 	AVPacket* EncodeVideo(AVFrame *frame) {
-		av_packet_unref(&packet);
 		frame->pts = vpts;
 		vpts++;
 		int result = avcodec_send_frame(vc,frame);
 		if (result != 0) {
 			return NULL;
 		}
-		result = avcodec_receive_packet(vc, &packet);
-		if (result != 0 || packet.size <= 0)
+		//将packet重置，去除引用，清空数据
+		av_packet_unref(&vpacket);
+		result = avcodec_receive_packet(vc, &vpacket);
+		if (result != 0 || vpacket.size <= 0)
 		{
 			return NULL;
 		}
-		return &packet;
+		return &vpacket;
 	}
 
 	bool CreateCodec(AVCodecID codecId) {

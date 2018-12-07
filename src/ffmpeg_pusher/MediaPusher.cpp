@@ -20,11 +20,17 @@ private:
 	//流地址
 	string url = "";
 
-	//视频编码器流
+	//视频编码器上下文
 	const AVCodecContext *vc = NULL;
+
+	//音频编码器上下文
+	const AVCodecContext *ac = NULL;
 
 	//视频流
 	AVStream *vs = NULL;
+
+	//音频流
+	AVStream *as = NULL;
 public:
 
 	void Close()
@@ -101,14 +107,33 @@ public:
 
 	bool SendPacket(AVPacket *packet) {
 		if (!packet || packet->size <= 0 || !packet->data)return false;
-		packet->pts = av_rescale_q(packet->pts, vc->time_base, vs->time_base);
-		packet->dts = av_rescale_q(packet->dts, vc->time_base, vs->time_base);
-		packet->duration = av_rescale_q(packet->duration, vc->time_base, vs->time_base);
 
+		AVRational srcTimeBase;
+		AVRational desTimeBase;
+
+		//判断音视频
+		if (vs && vc && packet->stream_index == vs->index)
+		{
+			srcTimeBase = vc->time_base;
+			desTimeBase = vs->time_base;
+		}
+		else if (as && ac && packet->stream_index == as->index)
+		{
+			srcTimeBase = ac->time_base;
+			desTimeBase = as->time_base;
+		}
+		else
+		{
+			return false;
+		}
+		packet->pts = av_rescale_q(packet->pts, srcTimeBase, desTimeBase);
+		packet->dts = av_rescale_q(packet->dts, srcTimeBase, desTimeBase);
+		packet->duration = av_rescale_q(packet->duration, srcTimeBase, desTimeBase);
+		cout << "#size=" << packet->size << flush;
 		int result = av_interleaved_write_frame(ic, packet);
 		if (result == 0)
 		{
-			cout << "#" << flush;
+			
 			return true;
 		}
 		return false;
