@@ -11,23 +11,19 @@ using namespace cv;
 
 int main(int argc, char *argv[])
 {
-	MediaEncode *encode = MediaEncode::Get();
-	MediaPusher *pusher = MediaPusher::Get();
-
-	encode->InitResample();
-	
-	//encode->Resample();
 
 	//rtsp url，这是一个可用的测试流地址
 	char *inUrl = "rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov";
 	//nginx-rtmp 直播服务器rtmp推流URL(192.168.1.106是你服务器的ip,确保服务器开启)
-	char *outUrl = "rtmp://192.168.1.107/live";
+	char *outUrl = "rtmp://192.168.42.134/live";
 
 	VideoCapture cam;
 
 	namedWindow("video");
-	//if (cam.open(0))
 	Mat frame;
+
+	MediaEncode *encode = MediaEncode::Get();
+	MediaPusher *pusher = MediaPusher::Get();
 
 	try
 	{
@@ -43,33 +39,68 @@ int main(int argc, char *argv[])
 		int inHeight = cam.get(CAP_PROP_FRAME_HEIGHT);
 		int fps = cam.get(CAP_PROP_FPS);
 
-		///初始化格式转换上下文,初始化输出数据结构
+		///音频属性
+
+		//声道数
+		encode->inChannels = 2;
+		//输入的样本格式
+		encode->inSampleFmt = SampleFmt::S16;
+		//输入的采样率
+		encode->inSampleRate = 44100;
+		//单通道每帧大小
+		encode->nbSample = 1024;
+		//输出的样本格式
+		encode->outSmapleFmt = SampleFmt::FLATP;
+
+
+		///视频属性
 		encode->inWidth = inWidth;
 		encode->inHeight = inHeight;
 		encode->outWidth = inWidth;
 		encode->outHeight = inHeight;
-		encode->InitScale();
 
-		///初始化编码相关
-
+		///初始化像素格式转换上下文
+		if (!encode->InitScale()){
+			getchar();
+			return -1;
+		}
+		cout << inUrl << "初始化像素格式转换 success" << endl;
+		///初始化音频重采样上下文
+		if (!encode->InitResample())
+		{
+			getchar();
+			return -1;
+		}
+		cout << inUrl << "初始化音频重采样 success" << endl;
+		///初始化视频编码器
 		if (!encode->InitVideoCodec())
 		{
-			throw exception("InitVideoCodec failed");
+			getchar();
+			return -1;
 		}
+		cout << inUrl << "初始化视频编码器 success" << endl;
+		///初始化音频编码器
 		if (!encode->InitAudioCodec())
 		{
-			throw exception("InitAudioCode failed");
+			getchar();
+			return -1;
 		}
-	
+		cout << inUrl << "初始化音频编码器 success" << endl;
 		///封装器设置
-		pusher->Init(outUrl);
-
+		if (!pusher->Init(outUrl)){
+			getchar();
+			return -1;
+		}
+		cout << inUrl << "封装器设置 success" << endl;
 		//添加视频流
 		pusher->AddStream(encode->vc);
-
+		cout << inUrl << "添加视频流 success" << endl;
+		//添加音频流
+		pusher->AddStream(encode->ac);
+		cout << inUrl << "添加音频流 success" << endl;
 		///打开网络IO流通道
 		pusher->OpenIO();
-
+		cout << inUrl << "打开网络IO流通道 success" << endl;
 		for (;;) {
 			///读取rtsp视频帧，并解码
 			//cam.read(frame); read内

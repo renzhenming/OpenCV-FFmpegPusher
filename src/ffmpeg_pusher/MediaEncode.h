@@ -23,9 +23,8 @@ public:
 	int inHeight = 720;
 	int inPixSize = 3;
 	int inChannels = 2;
-	SampleFmt inSampleFmt = S16;
 	int inSampleRate = 44100;
-
+	SampleFmt inSampleFmt = S16;
 
 	//Êä³ö²ÎÊý
 	int outWidth = 1280;

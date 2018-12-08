@@ -81,6 +81,11 @@ public:
 			this->vc = actx;
 			this->vs = vs;
 		}
+		else if (actx->codec_type == AVMEDIA_TYPE_AUDIO)
+		{
+			this->ac = actx;
+			this->as = vs;
+		}
 		return true;
 	}
 
@@ -133,7 +138,6 @@ public:
 		int result = av_interleaved_write_frame(ic, packet);
 		if (result == 0)
 		{
-			
 			return true;
 		}
 		return false;
