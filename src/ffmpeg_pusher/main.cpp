@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	//rtsp url，这是一个可用的测试流地址
 	char *inUrl = "rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov";
 	//nginx-rtmp 直播服务器rtmp推流URL(192.168.1.106是你服务器的ip,确保服务器开启)
-	char *outUrl = "rtmp://192.168.42.134/live";
+	char *outUrl = "rtmp://192.168.43.24/live";
 
 	VideoCapture cam;
 
@@ -38,7 +38,8 @@ int main(int argc, char *argv[])
 		int inWidth = cam.get(CAP_PROP_FRAME_WIDTH);
 		int inHeight = cam.get(CAP_PROP_FRAME_HEIGHT);
 		int fps = cam.get(CAP_PROP_FPS);
-
+		//fps有可能获取不到
+		if (fps == 0) fps = 25;
 		///音频属性
 
 		//声道数
