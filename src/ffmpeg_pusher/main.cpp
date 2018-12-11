@@ -4,10 +4,6 @@ using namespace std;
 #include "MediaEncoder.h"
 #include "MediaPusher.h"
 #include "MediaCapture.h"
-#include <opencv2/highgui.hpp>
-
-#pragma comment(lib,"opencv_world320.lib")
-
 
 int main(int argc, char *argv[])
 {
@@ -115,8 +111,6 @@ int main(int argc, char *argv[])
 					cout << packet << flush;
 				}
 			}
-			
-			cv::waitKey(1);
 		}
 	}
 	catch (const std::exception& ex)
