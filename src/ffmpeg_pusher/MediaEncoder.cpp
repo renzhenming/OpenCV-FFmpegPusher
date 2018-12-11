@@ -1,4 +1,4 @@
-#include "MediaEncode.h"
+#include "MediaEncoder.h"
 #include <iostream>
 extern "C" {
 #include "libavcodec/avcodec.h"
@@ -12,7 +12,7 @@ extern "C" {
 
 using namespace std;
 
-class CMediaEncode : public MediaEncode {
+class CMediaEncode : public MediaEncoder {
 private:
 	//像素格式转换上下文
 	SwsContext *vsc = NULL;
@@ -302,7 +302,7 @@ public:
 	}
 };
 
-MediaEncode* MediaEncode :: Get(unsigned char index) {
+MediaEncoder* MediaEncoder :: Get(unsigned char index) {
 	static bool isFirst = true;
 	if (isFirst)
 	{
@@ -312,10 +312,10 @@ MediaEncode* MediaEncode :: Get(unsigned char index) {
 	return &encode[index];
 }
 
-MediaEncode::MediaEncode() {
+MediaEncoder::MediaEncoder() {
 
 }
 
-MediaEncode :: ~MediaEncode() {
+MediaEncoder :: ~MediaEncoder() {
 
 }

@@ -1,12 +1,12 @@
 #include <iostream>
 using namespace std;
 
-#include "MediaEncode.h"
+#include "MediaEncoder.h"
 #include "MediaPusher.h"
+#include "MediaCapture.h"
 #include <opencv2/highgui.hpp>
 
 #pragma comment(lib,"opencv_world320.lib")
-using namespace cv;
 
 
 int main(int argc, char *argv[])
@@ -17,31 +17,21 @@ int main(int argc, char *argv[])
 	//nginx-rtmp 直播服务器rtmp推流URL(192.168.1.106是你服务器的ip,确保服务器开启)
 	char *outUrl = "rtmp://192.168.43.24/live";
 
-	VideoCapture cam;
+	MediaCapture *capture = MediaCapture::Get();
+	if (!capture->Init(inUrl))
+	{
+		cout << "open camera failed!" << endl;
+		getchar();
+		return -1;
+	}
+	cout << "open camera success!" << endl;
+	capture->Start();
 
-	namedWindow("video");
-	Mat frame;
-
-	MediaEncode *encode = MediaEncode::Get();
+	MediaEncoder *encode = MediaEncoder::Get();
 	MediaPusher *pusher = MediaPusher::Get();
 
 	try
 	{
-		///opencv打开流
-		cam.open(inUrl);
-		if (!cam.isOpened())
-		{
-			throw exception("camera open failed");
-		}
-		cout << inUrl << " cam open success" << endl;
-		//获取流宽高信息
-		int inWidth = cam.get(CAP_PROP_FRAME_WIDTH);
-		int inHeight = cam.get(CAP_PROP_FRAME_HEIGHT);
-		int fps = cam.get(CAP_PROP_FPS);
-		//fps有可能获取不到
-		if (fps == 0) fps = 25;
-		///音频属性
-
 		//声道数
 		encode->inChannels = 2;
 		//输入的样本格式
@@ -55,10 +45,10 @@ int main(int argc, char *argv[])
 
 
 		///视频属性
-		encode->inWidth = inWidth;
-		encode->inHeight = inHeight;
-		encode->outWidth = inWidth;
-		encode->outHeight = inHeight;
+		encode->inWidth = capture->width;
+		encode->inHeight = capture->height;
+		encode->outWidth = capture->width;
+		encode->outHeight = capture->height;
 
 		///初始化像素格式转换上下文
 		if (!encode->InitScale()){
@@ -103,40 +93,34 @@ int main(int argc, char *argv[])
 		pusher->OpenIO();
 		cout << inUrl << "打开网络IO流通道 success" << endl;
 		for (;;) {
-			///读取rtsp视频帧，并解码
-			//cam.read(frame); read内
-			//部就是做了grab和retrieve两步
-			if (!cam.grab()) {
-				continue;
-			}
-			///yuv转rgb
-			if (!cam.retrieve(frame)) {
-				continue;
-			}
-			imshow("video", frame);
-
-			///rgb to yuv
-			encode->inPixSize = frame.elemSize();
-			AVFrame *yuv = encode->RgbToYuv((char*)frame.data);
-			if (!yuv) continue;
-			
-			///h264编码
-			AVPacket *packet = encode->EncodeVideo(yuv);
-			if (!packet)
+			Data videoData = capture->Pop();
+			if (videoData.size <= 0)
 			{
+				Sleep(1);
 				continue;
 			}
-		
-			pusher->SendPacket(packet);
-			waitKey(1);
+
+			if (videoData.size > 0)
+			{
+				///rgb to yuv
+				AVFrame *yuv = encode->RgbToYuv((char *)videoData.data);
+				if (!yuv) continue;
+				cout << inUrl << "RgbToYuv success" << endl;
+				///h264编码
+				AVPacket *packet = encode->EncodeVideo(yuv);
+				if (!packet)continue;
+				cout << inUrl << "EncodeVideo success" << endl;
+				if (pusher->SendPacket(packet))
+				{
+					cout << packet << flush;
+				}
+			}
+			
+			cv::waitKey(1);
 		}
 	}
 	catch (const std::exception& ex)
 	{
-		if (cam.isOpened())
-		{
-			cam.release();
-		}
 		if (encode)
 		{
 			encode->Close();

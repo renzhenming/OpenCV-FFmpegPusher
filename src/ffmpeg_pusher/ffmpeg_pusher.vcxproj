@@ -126,16 +126,16 @@
     <ClCompile Include="Data.cpp" />
     <ClCompile Include="DataThread.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="MediaEncode.cpp" />
+    <ClCompile Include="MediaEncoder.cpp" />
     <ClCompile Include="MediaPusher.cpp" />
-    <ClCompile Include="VideoCapture.cpp" />
+    <ClCompile Include="MediaCapture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Data.h" />
     <ClInclude Include="DataThread.h" />
-    <ClInclude Include="MediaEncode.h" />
+    <ClInclude Include="MediaEncoder.h" />
     <ClInclude Include="MediaPusher.h" />
-    <ClInclude Include="VideoCapture.h" />
+    <ClInclude Include="MediaCapture.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

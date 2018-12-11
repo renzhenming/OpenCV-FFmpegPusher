@@ -1,18 +1,18 @@
 
-#include "VideoCapture.h"
+#include "MediaCapture.h"
 #include <opencv2/highgui.hpp>
 #include <iostream>
 
 #pragma comment(lib,"opencv_world320.lib")
 using namespace std;
 
-class VideCaptureImpl :public VideoCapture
+class MediaCaptureImpl :public MediaCapture
 {
 public:
 	cv::VideoCapture cam;
 
 	//初始化相机
-	bool VideoCapture::Init(int cameraIndex)
+	bool MediaCapture::Init(int cameraIndex)
 	{
 		///opencv打开流
 		cam.open(cameraIndex);
@@ -34,7 +34,7 @@ public:
 	}
 
 	//初始化网络流
-	bool VideoCapture::Init(const char *url)
+	bool MediaCapture::Init(const char *url)
 	{
 		cam.open(url);
 		if (!cam.isOpened())
@@ -52,7 +52,7 @@ public:
 	}
 
 	//停止
-	void VideoCapture::Stop()
+	void MediaCapture::Stop()
 	{
 		DataThread::Stop();
 		if (cam.isOpened())
@@ -63,6 +63,7 @@ public:
 
 	void Main()
 	{
+		cout << "进入线程"<< endl;
 		cv::Mat frame;
 		while (!isExit)
 		{
@@ -80,22 +81,23 @@ public:
 			Data d((char*)frame.data, frame.cols*frame.rows*frame.elemSize());
 			Push(d);
 		}
+		cout << "退出线程" << endl;
 	}
 
 };
 
-VideoCapture *VideoCapture::Get(unsigned char index) 
+MediaCapture *MediaCapture::Get(unsigned char index) 
 {
-	static VideCaptureImpl vc[255];
+	static MediaCaptureImpl vc[255];
 	return &vc[index];
 }
 
-VideoCapture::VideoCapture()
+MediaCapture::MediaCapture()
 {
 
 }
 
-VideoCapture::~VideoCapture()
+MediaCapture::~MediaCapture()
 {
 
 }

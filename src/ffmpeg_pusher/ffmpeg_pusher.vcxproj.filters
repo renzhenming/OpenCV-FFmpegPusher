@@ -18,9 +18,6 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="MediaEncode.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="MediaPusher.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -30,14 +27,14 @@
     <ClCompile Include="DataThread.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="VideoCapture.cpp">
+    <ClCompile Include="MediaCapture.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MediaEncoder.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="MediaEncode.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="MediaPusher.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -47,7 +44,10 @@
     <ClInclude Include="DataThread.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="VideoCapture.h">
+    <ClInclude Include="MediaEncoder.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MediaCapture.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

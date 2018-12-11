@@ -1,1 +1,1 @@
-ffplay rtmp://192.168.1.106/live  -fflags nobuffer
+ffplay rtmp://192.168.43.24/live  -fflags nobuffer

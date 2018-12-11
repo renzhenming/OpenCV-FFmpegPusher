@@ -10,7 +10,7 @@ enum SampleFmt
 	FLATP = 8
 };
 
-class MediaEncode
+class MediaEncoder
 {
 public:
 	//视频编码器上下文
@@ -35,7 +35,7 @@ public:
 	SampleFmt outSmapleFmt = FLATP;
 
 	//工厂生产方法
-	static MediaEncode *Get(unsigned char index = 0);
+	static MediaEncoder *Get(unsigned char index = 0);
 
 	virtual AVFrame* RgbToYuv(char *rgb) = 0;
 
@@ -63,7 +63,7 @@ public:
 	//音频编码 
 	virtual AVPacket * EncodeAudio(AVFrame* frame) = 0;
 
-	virtual ~MediaEncode();
+	virtual ~MediaEncoder();
 protected:
-	MediaEncode();
+	MediaEncoder();
 };
