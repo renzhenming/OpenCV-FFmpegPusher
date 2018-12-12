@@ -79,14 +79,28 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 		cout << inUrl << "封装器设置 success" << endl;
+
 		//添加视频流
-		pusher->AddStream(encode->vc);
+		int videoIndex = pusher->AddStream(encode->vc);
+		if (videoIndex < 0)
+		{
+			cout << inUrl << "添加视频流 failed" << endl;
+		}
 		cout << inUrl << "添加视频流 success" << endl;
+
 		//添加音频流
-		pusher->AddStream(encode->ac);
+		int audioIndex = pusher->AddStream(encode->ac);
+		if (audioIndex < 0)
+		{
+			cout << inUrl << "添加音频流 failed" << endl;
+		}
+
 		cout << inUrl << "添加音频流 success" << endl;
 		///打开网络IO流通道
-		pusher->OpenIO();
+		if (!pusher->OpenIO())
+		{
+			cout << inUrl << "打开网络IO流通道 failed" << endl;
+		}
 		cout << inUrl << "打开网络IO流通道 success" << endl;
 		for (;;) {
 			Data videoData = capture->Pop();
@@ -106,7 +120,7 @@ int main(int argc, char *argv[])
 				AVPacket *packet = encode->EncodeVideo(yuv);
 				if (!packet)continue;
 				cout << inUrl << "EncodeVideo success" << endl;
-				if (pusher->SendPacket(packet))
+				if (pusher->SendPacket(packet,videoIndex))
 				{
 					cout << packet << flush;
 				}

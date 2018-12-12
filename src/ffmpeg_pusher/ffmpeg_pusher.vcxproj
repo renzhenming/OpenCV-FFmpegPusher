@@ -123,6 +123,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AudioRecord.cpp" />
     <ClCompile Include="Data.cpp" />
     <ClCompile Include="DataThread.cpp" />
     <ClCompile Include="main.cpp" />
@@ -131,6 +132,7 @@
     <ClCompile Include="MediaCapture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AudioRecord.h" />
     <ClInclude Include="Data.h" />
     <ClInclude Include="DataThread.h" />
     <ClInclude Include="MediaEncoder.h" />

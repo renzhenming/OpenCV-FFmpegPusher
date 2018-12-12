@@ -33,6 +33,9 @@
     <ClCompile Include="MediaEncoder.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="AudioRecord.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MediaPusher.h">
@@ -48,6 +51,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="MediaCapture.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="AudioRecord.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

@@ -6,7 +6,6 @@ using namespace std;
 extern "C"
 {
 #include <libavformat/avformat.h>
-
 }
 #pragma comment(lib, "avutil.lib")
 #pragma comment(lib, "avformat.lib")
@@ -58,7 +57,7 @@ public:
 		return true;
 	}
 
-	bool AddStream(const AVCodecContext *actx) {
+	int AddStream(const AVCodecContext *actx) {
 		if (!ic)
 		{
 			return false;
@@ -86,7 +85,7 @@ public:
 			this->ac = actx;
 			this->as = vs;
 		}
-		return true;
+		return vs->index;
 	}
 
 	bool OpenIO() {
@@ -110,11 +109,13 @@ public:
 		return true;
 	}
 
-	bool SendPacket(AVPacket *packet) {
+	bool SendPacket(AVPacket *packet,int streamIndex) {
 		if (!packet || packet->size <= 0 || !packet->data)return false;
 
 		AVRational srcTimeBase;
 		AVRational desTimeBase;
+
+		packet->stream_index = streamIndex;
 
 		//ÅÐ¶ÏÒôÊÓÆµ
 		if (vs && vc && packet->stream_index == vs->index)

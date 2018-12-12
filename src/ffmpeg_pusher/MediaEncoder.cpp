@@ -28,6 +28,44 @@ private:
 	AVPacket apacket = { 0 };
 	int vpts = 0;
 	int apts = 0;
+
+private:
+	AVCodecContext* CreateCodec(AVCodecID codecId) {
+		//找到编码器
+		AVCodec *codec = avcodec_find_encoder(codecId);
+		if (!codec)
+		{
+			cout << "avcodec_find_encoder  failed!" << endl;
+			return false;
+		}
+		//获取编码器上下文
+		AVCodecContext *ac = avcodec_alloc_context3(codec);
+		if (!ac)
+		{
+			cout << "avcodec_alloc_context3  failed!" << endl;
+			return false;
+		}
+		cout << "avcodec_alloc_context3 success!" << endl;
+		ac->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+		ac->thread_count = 4;
+		return ac;
+	}
+
+	bool OpenCodec(AVCodecContext **context)
+	{
+		//打开编码器
+		int result = avcodec_open2(*context, 0, 0);
+		if (result != 0)
+		{
+			char err[1024] = { 0 };
+			av_strerror(result, err, sizeof(err) - 1);
+			cout << err << endl;
+			avcodec_free_context(context);
+			return false;
+		}
+		cout << "avcodec_open2 success!" << endl;
+		return true;
+	}
 public:
 	void Close() {
 		if (vsc)
@@ -150,7 +188,7 @@ public:
 	}
 
 	bool InitAudioCodec() {
-		if (!CreateCodec(AV_CODEC_ID_AAC)) {
+		if (!(ac = CreateCodec(AV_CODEC_ID_AAC))) {
 			return false;
 		}
 		ac->bit_rate = 40000;
@@ -207,23 +245,11 @@ public:
 	}
 
 	bool InitVideoCodec() {
-		AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_H264);
-		if (!codec)
+		if (!(vc = CreateCodec(AV_CODEC_ID_H264)))
 		{
-			cout << "Can`t find h264 encoder!" << endl;;
 			return false;
 		}
 
-		vc = avcodec_alloc_context3(codec);
-		if (!vc)
-		{
-			cout << "avcodec_alloc_context3 failed!" << endl;
-			return false;
-		}
-
-		vc->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-		vc->codec_id = codec->id;
-		vc->thread_count = 8;
 		//压缩后每秒视频的bit位大小 50kB
 		vc->bit_rate = 50 * 1024 * 8;
 		vc->width = outWidth;
@@ -236,15 +262,7 @@ public:
 		vc->max_b_frames = 0;
 		vc->pix_fmt = AV_PIX_FMT_YUV420P;
 
-		int result = avcodec_open2(vc, 0, 0);
-		if (result != 0)
-		{
-			cout << "avcodec_open2 failed!" << endl;
-			return false;
-		}
-
-		cout << "avcodec_open2 success!" << endl;
-		return true;
+		return OpenCodec(&vc);
 	}
 
 	AVPacket* EncodeVideo(AVFrame *frame) {
@@ -263,49 +281,13 @@ public:
 		}
 		return &vpacket;
 	}
-
-	bool CreateCodec(AVCodecID codecId) {
-		//找到编码器
-		AVCodec *codec = avcodec_find_encoder(codecId);
-		if (!codec)
-		{
-			cout << "avcodec_find_encoder  failed!" << endl;
-			return false;
-		}
-		//获取编码器上下文
-		ac = avcodec_alloc_context3(codec);
-		if (!ac)
-		{
-			cout << "avcodec_alloc_context3  failed!" << endl;
-			return false;
-		}
-		cout << "avcodec_alloc_context3 success!" << endl;
-		ac->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-		ac->thread_count = 4;
-		return true;
-	}
-
-	bool OpenCodec(AVCodecContext **context)
-	{
-		//打开编码器
-		int result = avcodec_open2(*context, 0, 0);
-		if (result != 0)
-		{
-			char err[1024] = { 0 };
-			av_strerror(result, err, sizeof(err) - 1);
-			cout << err << endl;
-			avcodec_free_context(context);
-			return false;
-		}
-		cout << "avcodec_open2 success!" << endl;
-		return true;
-	}
 };
 
 MediaEncoder* MediaEncoder :: Get(unsigned char index) {
 	static bool isFirst = true;
 	if (isFirst)
 	{
+		//注册所有的编解码器
 		avcodec_register_all();
 	}
 	static CMediaEncode encode[255];
